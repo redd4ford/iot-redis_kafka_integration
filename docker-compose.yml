@@ -1,0 +1,32 @@
+version: '3'
+
+services:
+
+  redis:
+    image: "redis:alpine"
+    ports:
+      - "6379:6379"
+    networks:
+      - network
+
+  scrapper:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - rediskafkaintegration/.env
+    stdin_open: true
+    depends_on:
+      - redis
+    networks:
+      - network
+    volumes:
+      - datasets:/datasets
+
+networks:
+  network:
+    driver: bridge
+
+volumes:
+  datasets:
+    driver: local
