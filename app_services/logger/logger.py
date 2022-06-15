@@ -33,6 +33,9 @@ class ConsoleLogger(Logger):
         print("Console Logging enabled")
 
     def log(self, link: str, data: Union[List[dict], dict], is_status: bool = False) -> None:
+        """
+        Write rows to console. Update Redis status when a batch has been processed.
+        """
         for counter, row in enumerate(data, start=1):
             print(
                 f"[{timezone.now()}] --- {link} --- "
@@ -53,6 +56,9 @@ class EventHubLogger(Logger):
         print("Event Hub Logging enabled")
 
     def log(self, link: str, data: Union[List[dict], dict], is_status: bool = False) -> None:
+        """
+        Batch send rows to Event Hub. Update Redis status after each processed batch.
+        """
         data = split_dataset_into_chunks(data)
         for counter, chunk in enumerate(data, start=1):
             loop.run_until_complete(self.service.send_data(chunk))

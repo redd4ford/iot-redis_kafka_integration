@@ -5,6 +5,7 @@ from drf_spectacular.utils import (
     OpenApiResponse,
     OpenApiParameter,
 )
+from injector import inject
 from rest_framework.response import Response
 from rest_framework.status import (
     HTTP_200_OK,
@@ -26,6 +27,17 @@ class DatasetProcessorAPIView(APIView):
     Link-based dataset processor.
     """
 
+    def __init__(self, service: DatasetProcessor = DatasetProcessor(), *args, **kwargs):
+        super(DatasetProcessorAPIView, self).__init__(**kwargs)
+        self.service = service
+
+    def dispatch(self, request, *args, **kwargs):
+        return super(DatasetProcessorAPIView, self).dispatch(request, *args, **kwargs)
+
+    @inject
+    def setup(self, request, service: DatasetProcessor = DatasetProcessor(), *args, **kwargs):
+        super(DatasetProcessorAPIView, self).setup(request, service, args, kwargs)
+
     @extend_schema(
         parameters=[
             OpenApiParameter(
@@ -37,7 +49,7 @@ class DatasetProcessorAPIView(APIView):
         ],
         request=None,
         responses={
-            200: OpenApiResponse(response=HTTP_200_OK, description="Database is filled"),
+            200: OpenApiResponse(response=HTTP_200_OK, description="File processed"),
             400: OpenApiResponse(description="Bad request"),
         },
     )
@@ -47,7 +59,7 @@ class DatasetProcessorAPIView(APIView):
         and store file processing status in Redis.
         """
         try:
-            result = DatasetProcessor.run(**request.query_params)
+            result = self.service.run(**request.query_params)
         except LinkDoesNotContainJsonError as e:
             return Response(
                 {"message": e.message},

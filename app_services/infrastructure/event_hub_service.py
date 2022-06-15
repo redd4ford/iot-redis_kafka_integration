@@ -1,8 +1,5 @@
 import asyncio
-import gzip
 import json
-import sys
-import time
 import zlib
 from typing import (
     List,
@@ -22,7 +19,11 @@ class EventHubService:
         self.producer = producer
         super().__init__()
 
-    async def send_data(self, data: Union[List[dict], dict]):
+    async def send_data(self, data: Union[List[dict], dict]) -> None:
+        """
+        Send rows from dataset in batches using Event Hub producer.
+        Compression with zlib was implemented due to strict batch size limits.
+        """
         async with self.producer:
             if isinstance(data, list):
                 event_data_batch = await self.producer.create_batch()
