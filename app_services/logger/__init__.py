@@ -1,5 +1,5 @@
 from .logger import (
     ConsoleLogger,
     EventHubLogger,
-    context,
 )
+from .context import context
