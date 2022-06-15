@@ -13,8 +13,8 @@ class Context:
     def __init__(self, logger: Logger):
         self.logger = logger
 
-    def write_log(self, data: Union[dict, str], is_status: bool = False) -> None:
-        self.logger.log(data, is_status)
+    def write_log(self, link: str, data: Union[dict, str], is_status: bool = False) -> None:
+        self.logger.log(link, data, is_status)
 
 
 context = Context(

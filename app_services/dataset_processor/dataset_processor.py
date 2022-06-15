@@ -1,7 +1,3 @@
-import json
-
-from django.conf import settings
-
 from api.constants import FileStatus
 from api.exceptions import LinkDoesNotContainJsonError
 from app_services.dataset_processor import (
@@ -28,27 +24,6 @@ class DatasetProcessor:
         return link
 
     @classmethod
-    def _should_update_upload_status(cls, processed_rows_number: int) -> bool:
-        """
-        Check if the current number of processed rows meets the requirements for the file
-        processing status update.
-        """
-        return any([
-            settings.BATCH_SIZE == processed_rows_number,
-            settings.BATCH_SIZE < processed_rows_number and
-            processed_rows_number % settings.BATCH_SIZE == 0,
-        ])
-
-    @classmethod
-    def _split_dataset_into_chunks(
-            cls, dataset: list, chunk_size: int = settings.BATCH_SIZE
-    ) -> list:
-        """
-        Split the dataset to chunks of chunk_size and make a list out of them.
-        """
-        return [dataset[i:i+chunk_size] for i in range(0, len(dataset), chunk_size)]
-
-    @classmethod
     def process_link(cls, link: str) -> list:
         """
         Get dataset by link as JSON, store it in the file, and return dataset for the further
@@ -67,42 +42,20 @@ class DatasetProcessor:
         Iterate over dataset rows, write the content to Kafka/console, and update file
         processing status.
         """
-        FileStatusService().log_status(status=FileStatus.in_progress(link))
-
-        if settings.WRITE_TO_KAFKA:
-            dataset = cls._split_dataset_into_chunks(dataset)
-            for counter, chunk in enumerate(dataset, start=1):
-                context.write_log(chunk)
-                FileStatusService().log_status(
-                    status=FileStatus.n_records_uploaded(
-                        link, counter * settings.BATCH_SIZE
-                    )
-                )
-        else:
-            for counter, row in enumerate(dataset, start=1):
-                context.write_log(
-                    data={
-                        "link": link,
-                        "counter": counter,
-                        "body": json.dumps({"body": row})
-                    }
-                )
-                if cls._should_update_upload_status(processed_rows_number=counter):
-                    FileStatusService().log_status(
-                        status=FileStatus.n_records_uploaded(link, counter)
-                    )
-
-        FileStatusService().log_status(status=FileStatus.done(link))
+        FileStatusService().log_status(link, status=FileStatus.IN_PROGRESS)
+        context.write_log(link, dataset)
+        FileStatusService().log_status(link, status=FileStatus.DONE)
 
     @classmethod
-    def run(cls, **query_params) -> None:
+    def run(cls, **query_params) -> str:
         """
         Load dataset and write it to Kafka/console.
         """
         link = DatasetProcessor._parse_query_params(**query_params)
 
         if RedisService().is_processed(link):
-            FileStatusService().log_status(status=FileStatus.already_processed(link))
+            FileStatusService().log_status(link, status=FileStatus.ALREADY_PROCESSED)
         else:
             dataset = cls.process_link(link)
             cls.log_dataset_rows(link, dataset)
+        return RedisService().get(link)

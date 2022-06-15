@@ -1,8 +1,8 @@
 from django.conf import settings
+from django.utils import timezone
 from injector import inject
 
 from app_services.infrastructure import RedisService
-from app_services.logger import context
 
 
 class FileStatusService:
@@ -11,10 +11,10 @@ class FileStatusService:
         self.redis_service = redis_service
         super().__init__()
 
-    def log_status(self, status: dict):
+    def log_status(self, link: str, status: str):
         """
         Log file processing status in Redis, and also console if Kafka is not integrated.
         """
-        self.redis_service.log_status(status)
+        self.redis_service.log_status({'key': link, 'value': status})
         if not settings.WRITE_TO_KAFKA:
-            context.write_log(status, is_status=True)
+            print(f"{timezone.now()} --- [{link}] = {status}")

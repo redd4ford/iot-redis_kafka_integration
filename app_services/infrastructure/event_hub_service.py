@@ -1,5 +1,9 @@
 import asyncio
+import gzip
 import json
+import sys
+import time
+import zlib
 from typing import (
     List,
     Union,
@@ -23,8 +27,10 @@ class EventHubService:
             if isinstance(data, list):
                 event_data_batch = await self.producer.create_batch()
                 for row in data:
-                    event_data_batch.add(EventData(json.dumps(row)))
-                    await self.producer.send_batch(event_data_batch)
+                    event_data_batch.add(EventData(
+                        zlib.compress(f'{row}'.encode())
+                    ))
+                await self.producer.send_batch(event_data_batch)
 
             elif isinstance(data, dict):
                 await self.producer.send_event(EventData(json.dumps(data)))
