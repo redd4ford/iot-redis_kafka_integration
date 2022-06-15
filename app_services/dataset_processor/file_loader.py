@@ -11,6 +11,9 @@ from api.exceptions import (
 class FileLoader:
     @classmethod
     def get_dataset_from_link(cls, link: str) -> list:
+        """
+        Fetch the dataset as JSON by link.
+        """
         try:
             response = urlopen(link)
         except HTTPError as e:
