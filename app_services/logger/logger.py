@@ -18,7 +18,7 @@ from app_services.dataset_processor import FileStatusService
 from app_services.infrastructure import EventHubService
 from app_services.logger.utils import (
     should_update_upload_status,
-    split_dataset_into_chunks,
+    get_optimal_batching,
 )
 
 
@@ -59,12 +59,15 @@ class EventHubLogger(Logger):
         """
         Batch send rows to Event Hub. Update Redis status after each processed batch.
         """
-        data = split_dataset_into_chunks(data)
-        for counter, chunk in enumerate(data, start=1):
+        chunk_size, chunked_data = get_optimal_batching(data)
+
+        counter = 0
+        for chunk in chunked_data:
             loop.run_until_complete(self.service.send_data(chunk))
+            counter += len(chunk)
             FileStatusService().log_status(
                 link,
-                status=FileStatus.N_RECORDS_UPLOADED(counter * settings.BATCH_SIZE)
+                status=FileStatus.N_RECORDS_UPLOADED(counter)
             )
 
 
