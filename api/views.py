@@ -47,7 +47,7 @@ class DatasetProcessorAPIView(APIView):
         and store file processing status in Redis.
         """
         try:
-            DatasetProcessor.run(**request.query_params)
+            result = DatasetProcessor.run(**request.query_params)
         except LinkDoesNotContainJsonError as e:
             return Response(
                 {"message": e.message},
@@ -60,6 +60,6 @@ class DatasetProcessorAPIView(APIView):
             )
         else:
             return Response(
-                {"message": f"File processed: {request.query_params.get('link')}"},
+                {"message": f"File processed: {request.query_params.get('link')}, status={result}"},
                 status=HTTP_200_OK
             )
