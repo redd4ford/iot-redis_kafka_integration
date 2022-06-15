@@ -13,23 +13,22 @@ https://docs.djangoproject.com/en/2.2/ref/settings/
 import os
 import environ
 import redis
+import asyncio
+from azure.eventhub.aio import EventHubProducerClient
+from azure.eventhub import EventData
 
 # Reading .env file
 env = environ.Env()
 environ.Env.read_env()
 
+# True = write to Kafka/Event Hub, False = write to Console
 WRITE_TO_KAFKA = env.bool("WRITE_TO_KAFKA")
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 
 # Quick-start development settings - unsuitable for production
-# See https://docs.djangoproject.com/en/2.2/howto/deployment/checklist/
-
-# SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = env.str("SECRET_KEY")
-
-# SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
 ALLOWED_HOSTS = []
@@ -46,6 +45,7 @@ INSTALLED_APPS = [
     'rest_framework',
     'drf_yasg',
     'drf_spectacular',
+    'django_injector',
     'api',
 ]
 
@@ -83,10 +83,8 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'rediskafkaintegration.wsgi.application'
 
-
 # Database
 # https://docs.djangoproject.com/en/2.2/ref/settings/#databases
-
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.sqlite3',
@@ -94,57 +92,50 @@ DATABASES = {
     }
 }
 
-
-# Password validation
-# https://docs.djangoproject.com/en/2.2/ref/settings/#auth-password-validators
-
-AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
-    },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
-]
-
-
 # Internationalization
 # https://docs.djangoproject.com/en/2.2/topics/i18n/
-
 LANGUAGE_CODE = 'en-us'
-
 TIME_ZONE = 'UTC'
-
 USE_I18N = True
-
 USE_L10N = True
-
 USE_TZ = True
 
-
-# Static files (CSS, JavaScript, Images)
-# https://docs.djangoproject.com/en/2.2/howto/static-files/
-
+# Static files
 STATIC_URL = 'static/'
 DATASETS_URL = 'datasets/'
 
+DEFAULT_DATASET = env.str("DEFAULT_DATASET", default=None)
+
+# Used for batch sending and updating file processing status. Set to any negative value to disable
+# batching. Batching is required when writing to Kafka, because I am poor and cannot afford Azure.
+BATCH_SIZE = 200
+
+if WRITE_TO_KAFKA and BATCH_SIZE < 0:
+    raise Exception("Batch send must be used when writing to Event Hub.")
+
 # Redis init
-REDIS_HOST_NAME = env.str("REDIS_HOST_NAME", default=None)
-REDIS_KEY = env.str("REDIS_KEY", default=None)
+REDIS_SERVER = redis.Redis(
+    host=env.str("REDIS_HOST_NAME", default=None),
+    port=env.int("REDIS_PORT", default=6379),
+    db=0,
+    password=env.str("REDIS_KEY", default=None),
+)
+try:
+    print(f"Redis ping: {REDIS_SERVER.ping()}")
+except (redis.exceptions.ConnectionError, ConnectionRefusedError):
+    raise Exception("Redis connection not established!")
 
-UPDATE_UPLOAD_STATUS_EVERY_N_ROWS = 200
+# Kafka/Event Hub init
+EVENT_HUB_CONNECTION_STRING = env.str("EVENT_HUB_CONNECTION_STRING", default=None)
+EVENT_HUB_NAME = env.str("EVENT_HUB_NAME", default=None)
 
-REDIS_SERVER = None
-if REDIS_HOST_NAME:
-    REDIS_SERVER = redis.StrictRedis(
-        host=REDIS_HOST_NAME,
-        port=6380,
-        password=REDIS_KEY,
-        ssl=True
+EVENT_HUB = None
+if WRITE_TO_KAFKA:
+    if not EVENT_HUB_CONNECTION_STRING:
+        raise Exception("Event Hub connection string was not provided.")
+
+    EVENT_HUB = EventHubProducerClient.from_connection_string(
+        conn_str=EVENT_HUB_CONNECTION_STRING,
+        eventhub_name=EVENT_HUB_NAME,
     )
+    print("Event Hub connected.")
