@@ -13,7 +13,7 @@ from app_services.infrastructure import RedisService
 from app_services.logger import context
 
 
-class DataProcessor:
+class DatasetProcessor:
     @classmethod
     def _parse_query_params(cls, **query_params) -> str:
         """
@@ -34,10 +34,19 @@ class DataProcessor:
         processing status update.
         """
         return any([
-            settings.UPDATE_STATUS_EVERY_N_ROWS == processed_rows_number,
-            settings.UPDATE_STATUS_EVERY_N_ROWS < processed_rows_number and
-            processed_rows_number % settings.UPDATE_STATUS_EVERY_N_ROWS == 0,
+            settings.BATCH_SIZE == processed_rows_number,
+            settings.BATCH_SIZE < processed_rows_number and
+            processed_rows_number % settings.BATCH_SIZE == 0,
         ])
+
+    @classmethod
+    def _split_dataset_into_chunks(
+            cls, dataset: list, chunk_size: int = settings.BATCH_SIZE
+    ) -> list:
+        """
+        Split the dataset to chunks of chunk_size and make a list out of them.
+        """
+        return [dataset[i:i+chunk_size] for i in range(0, len(dataset), chunk_size)]
 
     @classmethod
     def process_link(cls, link: str) -> list:
@@ -60,18 +69,28 @@ class DataProcessor:
         """
         FileStatusService().log_status(status=FileStatus.in_progress(link))
 
-        for counter, row in enumerate(dataset, start=1):
-            context.write_log(
-                data={
-                    "link": link,
-                    "counter": counter,
-                    "body": json.dumps({"body": row})
-                }
-            )
-
-            if settings.UPDATE_STATUS_EVERY_N_ROWS > 0:
+        if settings.WRITE_TO_KAFKA:
+            dataset = cls._split_dataset_into_chunks(dataset)
+            for counter, chunk in enumerate(dataset, start=1):
+                context.write_log(chunk)
+                FileStatusService().log_status(
+                    status=FileStatus.n_records_uploaded(
+                        link, counter * settings.BATCH_SIZE
+                    )
+                )
+        else:
+            for counter, row in enumerate(dataset, start=1):
+                context.write_log(
+                    data={
+                        "link": link,
+                        "counter": counter,
+                        "body": json.dumps({"body": row})
+                    }
+                )
                 if cls._should_update_upload_status(processed_rows_number=counter):
-                    FileStatusService().log_status(status=FileStatus.n_records_uploaded(link, counter))
+                    FileStatusService().log_status(
+                        status=FileStatus.n_records_uploaded(link, counter)
+                    )
 
         FileStatusService().log_status(status=FileStatus.done(link))
 
@@ -80,7 +99,7 @@ class DataProcessor:
         """
         Load dataset and write it to Kafka/console.
         """
-        link = DataProcessor._parse_query_params(**query_params)
+        link = DatasetProcessor._parse_query_params(**query_params)
 
         if RedisService().is_processed(link):
             FileStatusService().log_status(status=FileStatus.already_processed(link))
