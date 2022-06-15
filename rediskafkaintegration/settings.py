@@ -106,8 +106,12 @@ DATASETS_URL = 'datasets/'
 
 DEFAULT_DATASET = env.str("DEFAULT_DATASET", default=None)
 
+MAX_BATCH_SIZE_IN_BYTES = env.int("MAX_BATCH_SIZE_IN_BYTES", default=262144)
+
 # Used for batch sending and updating file processing status. Set to any negative value to disable
 # batching. Batching is required when writing to Kafka, because I am poor and cannot afford Azure.
+# If this batch size is not suitable for dataset (e.g. the size of all the data in one batch is
+# greater than MAX_BATCH_SIZE_IN_BYTES), the optimal BATCH_SIZE will be calculated by the program.
 BATCH_SIZE = 200
 
 if WRITE_TO_KAFKA and BATCH_SIZE < 0:
