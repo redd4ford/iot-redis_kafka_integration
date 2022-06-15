@@ -1,3 +1,4 @@
+from django.conf import settings
 from drf_spectacular.types import OpenApiTypes
 from drf_spectacular.utils import (
     extend_schema,
@@ -17,7 +18,7 @@ from api.exceptions import (
     HttpErrorOnProcessingError,
     JsonDecodeError,
 )
-from app_services.dataset_processor import DataProcessor
+from app_services.dataset_processor import DatasetProcessor
 
 
 class DatasetProcessorAPIView(APIView):
@@ -31,6 +32,7 @@ class DatasetProcessorAPIView(APIView):
                 "link", OpenApiTypes.STR, OpenApiParameter.QUERY,
                 required=True,
                 description="A path to the .json file",
+                default=settings.DEFAULT_DATASET,
             ),
         ],
         request=None,
@@ -45,7 +47,7 @@ class DatasetProcessorAPIView(APIView):
         and store file processing status in Redis.
         """
         try:
-            DataProcessor.process(**request.query_params)
+            DatasetProcessor.run(**request.query_params)
         except LinkDoesNotContainJsonError as e:
             return Response(
                 {"message": e.message},
