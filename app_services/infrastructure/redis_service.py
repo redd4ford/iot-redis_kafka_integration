@@ -15,7 +15,6 @@ class RedisService:
         return self.get(link) is not None
 
     def set(self, key: str, value: str) -> None:
-        print(key, value)
         self.redis.hset('file', key, value)
 
     def get(self, key: str) -> Optional[str]:
