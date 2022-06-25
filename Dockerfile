@@ -1,7 +1,15 @@
-FROM    python:3.9-alpine
-ENV PYTHONUNBUFFERED 1
+FROM    python:3.9
+ENV     PYTHONFAULTHANDLER            1
+ENV     PYTHONUNBUFFERED              1
+ENV     PYTHONHASHSEED                random
+ENV     PYTHONDONTWRITEBYTECODE       1
+ENV     PIP_NO_CACHE_DIR              off
+ENV     PIP_DISABLE_PIP_VERSION_CHECK on
+ENV     PIP_DEFAULT_TIMEOUT           100
 
-ADD     . /api
+EXPOSE  8000
+ENV     DEBIAN_FRONTEND               newt
+
 WORKDIR /api
-RUN     pip3 install -r requirements.txt
-CMD     ["python", "manage.py", "runserver"]
+COPY    . .
+RUN     pip install -r requirements.txt
