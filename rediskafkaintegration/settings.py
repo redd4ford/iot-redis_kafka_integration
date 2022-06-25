@@ -31,7 +31,7 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 SECRET_KEY = env.str("SECRET_KEY")
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ["*"]
 
 # Application definition
 
@@ -108,26 +108,25 @@ DEFAULT_DATASET = env.str("DEFAULT_DATASET", default=None)
 
 MAX_BATCH_SIZE_IN_BYTES = env.int("MAX_BATCH_SIZE_IN_BYTES", default=262144)
 
-# Used for batch sending and updating file processing status. Set to any negative value to disable
-# batching. Batching is required when writing to Kafka, because I am poor and cannot afford Azure.
+# Batching is required when writing to Kafka, because I am poor and cannot afford Azure.
 # If this batch size is not suitable for dataset (e.g. the size of all the data in one batch is
 # greater than MAX_BATCH_SIZE_IN_BYTES), the optimal BATCH_SIZE will be calculated by the program.
 BATCH_SIZE = 200
 
-if WRITE_TO_KAFKA and BATCH_SIZE < 0:
-    raise Exception("Batch send must be used when writing to Event Hub.")
-
 # Redis init
 REDIS_SERVER = redis.Redis(
     host=env.str("REDIS_HOST_NAME", default=None),
-    port=env.int("REDIS_PORT", default=6379),
+    port=env.int("REDIS_PORT", default=6380),
     db=0,
     password=env.str("REDIS_KEY", default=None),
+    ssl=True,
+    socket_timeout=100000,
+    socket_connect_timeout=100000,
 )
 try:
     print(f"Redis ping: {REDIS_SERVER.ping()}")
-except (redis.exceptions.ConnectionError, ConnectionRefusedError):
-    raise Exception("Redis connection not established!")
+except (redis.exceptions.ConnectionError, ConnectionRefusedError) as ex:
+    raise Exception(f"Redis connection not established!, reason={ex}")
 
 # Kafka/Event Hub init
 EVENT_HUB_CONNECTION_STRING = env.str("EVENT_HUB_CONNECTION_STRING", default=None)

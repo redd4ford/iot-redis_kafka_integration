@@ -1,4 +1,4 @@
-version: '3'
+version: '3.8'
 
 services:
 
@@ -6,27 +6,27 @@ services:
     image: "redis:alpine"
     ports:
       - "6379:6379"
-    networks:
-      - network
+    profiles: ["dev"]
 
-  scrapper:
+  api:
+    container_name: dataset_scrapper
+    command: python3.9 manage.py runserver 0.0.0.0:8000
+    restart: always
+    ports:
+      - "8000:8000"
+    expose:
+      - "8000"
     build:
       context: .
       dockerfile: Dockerfile
+      network: host
     env_file:
       - rediskafkaintegration/.env
+    environment:
+      - WRITE_TO_KAFKA=True   # use ${WRITE_TO_KAFKA} to get value from .env
     stdin_open: true
-    depends_on:
-      - redis
-    networks:
-      - network
     volumes:
-      - datasets:/datasets
-
-networks:
-  network:
-    driver: bridge
+      - datasets:/api/datasets
 
 volumes:
   datasets:
-    driver: local
