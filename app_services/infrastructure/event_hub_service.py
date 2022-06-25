@@ -1,6 +1,5 @@
 import asyncio
 import json
-import zlib
 from typing import (
     List,
     Union,
@@ -29,7 +28,7 @@ class EventHubService:
                 event_data_batch = await self.producer.create_batch()
                 for row in data:
                     event_data_batch.add(EventData(
-                        zlib.compress(f'{row}'.encode())
+                        json.dumps(row)
                     ))
                 await self.producer.send_batch(event_data_batch)
 

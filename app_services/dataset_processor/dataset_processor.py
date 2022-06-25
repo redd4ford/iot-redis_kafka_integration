@@ -1,3 +1,5 @@
+from typing import Tuple
+
 from api.constants import FileStatus
 from api.exceptions import LinkDoesNotContainJsonError
 from app_services.dataset_processor import (
@@ -11,17 +13,20 @@ from app_services.logger import context
 
 class DatasetProcessor:
     @classmethod
-    def _parse_query_params(cls, **query_params) -> str:
+    def _parse_query_params(cls, **query_params) -> Tuple[str, bool]:
         """
-        Process queried link.
+        Process queried link and ignore_status parameters.
         """
         link = (
             query_params.get("link")[0]
         )
         if not link.endswith(".json"):
             raise LinkDoesNotContainJsonError(link)
+        ignore_status = (
+            query_params.get("ignore_status")[0].lower() == 'true'
+        )
 
-        return link
+        return link, ignore_status
 
     @classmethod
     def process_link(cls, link: str) -> list:
@@ -51,9 +56,9 @@ class DatasetProcessor:
         """
         Load dataset and write it to Kafka/console.
         """
-        link = DatasetProcessor._parse_query_params(**query_params)
+        link, ignore_status = DatasetProcessor._parse_query_params(**query_params)
 
-        if RedisService().is_processed(link):
+        if RedisService().is_processed(link) and not ignore_status:
             FileStatusService().log_status(link, status=FileStatus.ALREADY_PROCESSED)
         else:
             dataset = cls.process_link(link)

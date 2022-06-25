@@ -46,6 +46,12 @@ class DatasetProcessorAPIView(APIView):
                 description="A path to the .json file",
                 default=settings.DEFAULT_DATASET,
             ),
+            OpenApiParameter(
+                "ignore_status", OpenApiTypes.BOOL, OpenApiParameter.QUERY,
+                required=True,
+                description="Process the file again even if it was processed before",
+                default=False,
+            ),
         ],
         request=None,
         responses={
