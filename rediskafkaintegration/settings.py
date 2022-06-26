@@ -119,7 +119,7 @@ REDIS_SERVER = redis.Redis(
     port=env.int("REDIS_PORT", default=6380),
     db=0,
     password=env.str("REDIS_KEY", default=None),
-    ssl=True,
+    ssl=True if env.int("REDIS_PORT", default=6380) == 6380 else False,
     socket_timeout=100000,
     socket_connect_timeout=100000,
 )
