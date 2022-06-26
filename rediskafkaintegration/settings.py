@@ -130,7 +130,6 @@ except (redis.exceptions.ConnectionError, ConnectionRefusedError) as ex:
 
 # Kafka/Event Hub init
 EVENT_HUB_CONNECTION_STRING = env.str("EVENT_HUB_CONNECTION_STRING", default=None)
-EVENT_HUB_NAME = env.str("EVENT_HUB_NAME", default=None)
 
 EVENT_HUB = None
 if WRITE_TO_KAFKA:
@@ -139,6 +138,5 @@ if WRITE_TO_KAFKA:
 
     EVENT_HUB = EventHubProducerClient.from_connection_string(
         conn_str=EVENT_HUB_CONNECTION_STRING,
-        eventhub_name=EVENT_HUB_NAME,
     )
     print("Event Hub connected.")
