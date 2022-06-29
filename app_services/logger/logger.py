@@ -9,7 +9,6 @@ from typing import (
     List,
 )
 
-from django.conf import settings
 from django.utils import timezone
 from injector import inject
 
@@ -24,7 +23,7 @@ from app_services.logger.utils import (
 
 class Logger(ABC):
     @abstractmethod
-    def log(self, link: str, data: dict, is_status: bool = False):
+    def log(self, link: str, data: dict):
         pass
 
 
@@ -32,7 +31,7 @@ class ConsoleLogger(Logger):
     def __init__(self):
         print("Console Logging enabled")
 
-    def log(self, link: str, data: Union[List[dict], dict], is_status: bool = False) -> None:
+    def log(self, link: str, data: Union[List[dict], dict]) -> None:
         """
         Write rows to console. Update Redis status when a batch has been processed.
         """
@@ -55,7 +54,7 @@ class EventHubLogger(Logger):
         super().__init__()
         print("Event Hub Logging enabled")
 
-    def log(self, link: str, data: Union[List[dict], dict], is_status: bool = False) -> None:
+    def log(self, link: str, data: Union[List[dict], dict]) -> None:
         """
         Batch send rows to Event Hub. Update Redis status after each processed batch.
         """
