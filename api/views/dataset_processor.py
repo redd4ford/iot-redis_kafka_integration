@@ -20,6 +20,7 @@ from api.exceptions import (
     JsonDecodeError,
 )
 from app_services.dataset_processor import DatasetProcessor
+from app_services.infrastructure import RedisService
 
 
 class DatasetProcessorAPIView(APIView):
@@ -59,7 +60,7 @@ class DatasetProcessorAPIView(APIView):
             400: OpenApiResponse(description="Bad request"),
         },
     )
-    def get(self, request):
+    def post(self, request):
         """
         Get dataset from a link, write data to Kafka or Console (see settings.WRITE_TO_KAFKA),
         and store file processing status in Redis.
@@ -81,3 +82,46 @@ class DatasetProcessorAPIView(APIView):
                 {"message": f"File processed: {request.query_params.get('link')}, status={result}"},
                 status=HTTP_200_OK
             )
+
+
+class FileStatusCheckerAPIView(APIView):
+    """
+    Check the current file processing status.
+    """
+
+    def __init__(self, service: RedisService = RedisService(), *args, **kwargs):
+        super(FileStatusCheckerAPIView, self).__init__(**kwargs)
+        self.service = service
+
+    def dispatch(self, request, *args, **kwargs):
+        return super(FileStatusCheckerAPIView, self).dispatch(request, *args, **kwargs)
+
+    @inject
+    def setup(self, request, service: RedisService = RedisService(), *args, **kwargs):
+        super(FileStatusCheckerAPIView, self).setup(request, service, args, kwargs)
+
+    @extend_schema(
+        parameters=[
+            OpenApiParameter(
+                "link", OpenApiTypes.STR, OpenApiParameter.QUERY,
+                required=True,
+                description="A path to the .json file that is currently being processed",
+                default=settings.DEFAULT_DATASET,
+            ),
+        ],
+        request=None,
+        responses={
+            200: OpenApiResponse(response=HTTP_200_OK, description="File processed"),
+            400: OpenApiResponse(description="Bad request"),
+        },
+    )
+    def get(self, request):
+        try:
+            link = (
+                request.query_params.get("link")[0]
+            )
+            if not link.endswith(".json"):
+                raise LinkDoesNotContainJsonError(link)
+            result = self.service.get(link)
+            if not result:
+                raise
