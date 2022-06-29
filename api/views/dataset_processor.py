@@ -19,8 +19,8 @@ from api.exceptions import (
     HttpErrorOnProcessingError,
     JsonDecodeError,
 )
+
 from app_services.dataset_processor import DatasetProcessor
-from app_services.infrastructure import RedisService
 
 
 class DatasetProcessorAPIView(APIView):
@@ -29,7 +29,7 @@ class DatasetProcessorAPIView(APIView):
     """
 
     def __init__(self, service: DatasetProcessor = DatasetProcessor(), *args, **kwargs):
-        super(DatasetProcessorAPIView, self).__init__(**kwargs)
+        super(DatasetProcessorAPIView, self).__init__(*args, **kwargs)
         self.service = service
 
     def dispatch(self, request, *args, **kwargs):
@@ -53,11 +53,21 @@ class DatasetProcessorAPIView(APIView):
                 description="Process the file again even if it was processed before",
                 default=False,
             ),
+            OpenApiParameter(
+                "rows_to_get", OpenApiTypes.INT, OpenApiParameter.QUERY,
+                required=True,
+                description="How many rows from the dataset should be processed",
+                default=1000,
+            )
         ],
         request=None,
         responses={
-            200: OpenApiResponse(response=HTTP_200_OK, description="File processed"),
-            400: OpenApiResponse(description="Bad request"),
+            200: OpenApiResponse(response=HTTP_200_OK,
+                                 description="OK: File processed"),
+            400: OpenApiResponse(response=HTTP_400_BAD_REQUEST,
+                                 description="Bad request: This dataset cannot be parsed"),
+            404: OpenApiResponse(response=HTTP_404_NOT_FOUND,
+                                 description="Not found: There is no .json file by this link"),
         },
     )
     def post(self, request):
@@ -79,49 +89,7 @@ class DatasetProcessorAPIView(APIView):
             )
         else:
             return Response(
-                {"message": f"File processed: {request.query_params.get('link')}, status={result}"},
+                {"message": f"File processed: {request.query_params.get('link')}, "
+                            f"status={result}"},
                 status=HTTP_200_OK
             )
-
-
-class FileStatusCheckerAPIView(APIView):
-    """
-    Check the current file processing status.
-    """
-
-    def __init__(self, service: RedisService = RedisService(), *args, **kwargs):
-        super(FileStatusCheckerAPIView, self).__init__(**kwargs)
-        self.service = service
-
-    def dispatch(self, request, *args, **kwargs):
-        return super(FileStatusCheckerAPIView, self).dispatch(request, *args, **kwargs)
-
-    @inject
-    def setup(self, request, service: RedisService = RedisService(), *args, **kwargs):
-        super(FileStatusCheckerAPIView, self).setup(request, service, args, kwargs)
-
-    @extend_schema(
-        parameters=[
-            OpenApiParameter(
-                "link", OpenApiTypes.STR, OpenApiParameter.QUERY,
-                required=True,
-                description="A path to the .json file that is currently being processed",
-                default=settings.DEFAULT_DATASET,
-            ),
-        ],
-        request=None,
-        responses={
-            200: OpenApiResponse(response=HTTP_200_OK, description="File processed"),
-            400: OpenApiResponse(description="Bad request"),
-        },
-    )
-    def get(self, request):
-        try:
-            link = (
-                request.query_params.get("link")[0]
-            )
-            if not link.endswith(".json"):
-                raise LinkDoesNotContainJsonError(link)
-            result = self.service.get(link)
-            if not result:
-                raise
