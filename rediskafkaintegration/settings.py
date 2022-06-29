@@ -111,7 +111,7 @@ MAX_BATCH_SIZE_IN_BYTES = env.int("MAX_BATCH_SIZE_IN_BYTES", default=262144)
 # Batching is required when writing to Kafka, because I am poor and cannot afford Azure.
 # If this batch size is not suitable for dataset (e.g. the size of all the data in one batch is
 # greater than MAX_BATCH_SIZE_IN_BYTES), the optimal BATCH_SIZE will be calculated by the program.
-BATCH_SIZE = 200
+DEFAULT_BATCH_SIZE = 200
 
 # Redis init
 REDIS_SERVER = redis.Redis(

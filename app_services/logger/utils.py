@@ -10,13 +10,13 @@ def should_update_upload_status(processed_rows_number: int) -> bool:
     processing status update.
     """
     return any([
-        settings.BATCH_SIZE == processed_rows_number,
-        settings.BATCH_SIZE < processed_rows_number and
-        processed_rows_number % settings.BATCH_SIZE == 0,
+        settings.DEFAULT_BATCH_SIZE == processed_rows_number,
+        settings.DEFAULT_BATCH_SIZE < processed_rows_number and
+        processed_rows_number % settings.DEFAULT_BATCH_SIZE == 0,
     ])
 
 
-def split_dataset_into_chunks(dataset: list, chunk_size: int = settings.BATCH_SIZE) -> list:
+def split_dataset_into_chunks(dataset: list, chunk_size: int = settings.DEFAULT_BATCH_SIZE) -> list:
     """
     Split the dataset to chunks of chunk_size and make a list out of them.
     """
@@ -34,7 +34,7 @@ def get_optimal_batching(data: list) -> Tuple[int, list]:
     """
     Calculate optimal batching strategy based on your Azure subscription limitations.
     """
-    optimal_chunk_size = settings.BATCH_SIZE
+    optimal_chunk_size = settings.DEFAULT_BATCH_SIZE
     chunked_data = data
 
     is_optimal_batching_found = False
@@ -43,7 +43,7 @@ def get_optimal_batching(data: list) -> Tuple[int, list]:
         current_max_chunk_size_in_bytes = calculate_current_max_batch_size_in_bytes(chunked_data)
         if current_max_chunk_size_in_bytes >= settings.MAX_BATCH_SIZE_IN_BYTES:
             optimal_chunk_size = int(
-                settings.BATCH_SIZE /
+                settings.DEFAULT_BATCH_SIZE /
                 (current_max_chunk_size_in_bytes / settings.MAX_BATCH_SIZE_IN_BYTES)
             )
         else:

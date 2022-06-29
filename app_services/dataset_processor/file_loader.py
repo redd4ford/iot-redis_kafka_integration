@@ -2,6 +2,8 @@ import json
 from urllib.error import HTTPError
 from urllib.request import urlopen
 
+from django.conf import settings
+
 from api.exceptions import (
     HttpErrorOnProcessingError,
     JsonDecodeError,
@@ -15,9 +17,13 @@ class FileLoader:
         Fetch the dataset as JSON by link.
         """
         try:
-            limit = rows_to_get if rows_to_get < 200 else 200
+            limit = (
+                rows_to_get if rows_to_get < settings.DEFAULT_BATCH_SIZE
+                else settings.DEFAULT_BATCH_SIZE
+            )
             processed_rows_as_json = []
             offset = 0
+
             while len(processed_rows_as_json) < rows_to_get:
                 dataset_patch = urlopen(f'{link}?$limit={limit}&$offset={offset}')
 
