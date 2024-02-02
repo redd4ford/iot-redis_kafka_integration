@@ -4,6 +4,11 @@ from django.conf import settings
 from injector import inject
 from redis.client import Redis
 
+from django_app.exceptions import (
+    FileStatusNotFoundError,
+    LinkDoesNotContainJsonError,
+)
+
 
 class RedisService:
     @inject
@@ -18,11 +23,14 @@ class RedisService:
         self.redis.hset('file', key, value)
 
     def get(self, key: str) -> Optional[str]:
+        if not key.endswith(".json"):
+            raise LinkDoesNotContainJsonError(key)
+
         status = self.redis.hget('file', key)
         if status:
             return status.decode("utf-8")
         else:
-            return None
+            raise FileStatusNotFoundError
 
     def log_status(self, data: dict):
         self.set(**data)

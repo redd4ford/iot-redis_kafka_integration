@@ -4,7 +4,7 @@ from urllib.request import urlopen
 
 from django.conf import settings
 
-from api.exceptions import (
+from django_app.exceptions import (
     HttpErrorOnProcessingError,
     JsonDecodeError,
 )
@@ -12,39 +12,35 @@ from api.exceptions import (
 
 class FileLoader:
     @classmethod
-    def get_dataset_from_link(cls, link: str, rows_to_get: int) -> list:
+    def get_dataset_from_link(cls, link: str, requested_number_of_records: int) -> list[dict]:
         """
         Fetch the dataset as JSON by link.
         """
         try:
-            limit = (
-                rows_to_get if rows_to_get < settings.DEFAULT_BATCH_SIZE
-                else settings.DEFAULT_BATCH_SIZE
-            )
-            processed_rows_as_json = []
+            limit = min([requested_number_of_records, settings.DEFAULT_BATCH_SIZE])
+            processed_records = []
             offset = 0
 
-            while len(processed_rows_as_json) < rows_to_get:
-                dataset_patch = urlopen(f'{link}?$limit={limit}&$offset={offset}')
+            while len(processed_records) < requested_number_of_records:
+                dataset_batch = urlopen(url=f'{link}?$limit={limit}&$offset={offset}')
 
                 try:
-                    dataset_batch_as_json = json.loads(dataset_patch.read())
-                    if not dataset_batch_as_json:
-                        # rows_to_get is greater than the actual dataset size
-                        return processed_rows_as_json
+                    dataset_batch_as_json = json.loads(dataset_batch.read())
+                    if dataset_batch_as_json is None:
+                        # requested_number_of_records is greater than the actual dataset size
+                        return processed_records
                 except json.decoder.JSONDecodeError:
-                    if not processed_rows_as_json:
-                        raise JsonDecodeError(link)
-                    else:
-                        return processed_rows_as_json
+                    if processed_records is not None:
+                        return processed_records
+                    raise JsonDecodeError(link)
 
-                processed_rows_as_json += dataset_batch_as_json
-                if len(processed_rows_as_json) > rows_to_get:
-                    # the last batch was greater than needed
-                    processed_rows_as_json = processed_rows_as_json[:rows_to_get]
+                processed_records += dataset_batch_as_json
+                if len(processed_records) > requested_number_of_records:
+                    processed_records = processed_records[:requested_number_of_records]
+                    break
 
                 offset += limit
         except HTTPError as e:
             raise HttpErrorOnProcessingError(link, f"{e}")
 
-        return processed_rows_as_json
+        return processed_records

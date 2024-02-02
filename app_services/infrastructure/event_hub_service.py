@@ -27,13 +27,11 @@ class EventHubService:
             if isinstance(data, list):
                 event_data_batch = await self.producer.create_batch()
                 for row in data:
-                    event_data_batch.add(EventData(
-                        json.dumps(row)
-                    ))
+                    event_data_batch.add(EventData(body=json.dumps(row)))
                 await self.producer.send_batch(event_data_batch)
 
             elif isinstance(data, dict):
-                await self.producer.send_event(EventData(json.dumps(data)))
+                await self.producer.send_event(EventData(body=json.dumps(data)))
 
 
 loop = asyncio.get_event_loop()

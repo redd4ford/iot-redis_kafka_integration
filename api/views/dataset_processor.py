@@ -14,12 +14,6 @@ from rest_framework.status import (
 )
 from rest_framework.views import APIView
 
-from api.exceptions import (
-    LinkDoesNotContainJsonError,
-    HttpErrorOnProcessingError,
-    JsonDecodeError,
-)
-
 from app_services.dataset_processor import DatasetProcessor
 
 
@@ -75,21 +69,10 @@ class DatasetProcessorAPIView(APIView):
         Get dataset from a link, write data to Kafka or Console (see settings.WRITE_TO_KAFKA),
         and store file processing status in Redis.
         """
-        try:
-            result = self.service.run(**request.query_params)
-        except LinkDoesNotContainJsonError as e:
-            return Response(
-                {"message": e.message},
-                status=HTTP_404_NOT_FOUND
-            )
-        except (HttpErrorOnProcessingError, JsonDecodeError) as e:
-            return Response(
-                {"message": e.message},
-                status=HTTP_400_BAD_REQUEST
-            )
-        else:
-            return Response(
-                {"message": f"File processed: {request.query_params.get('link')}, "
-                            f"status={result}"},
-                status=HTTP_200_OK
-            )
+        result = self.service.run(**request.query_params)
+        return Response(
+            data={
+                "message": f"File processed: {request.query_params.get('link')}, status={result}"
+            },
+            status=HTTP_200_OK
+        )

@@ -14,11 +14,6 @@ from rest_framework.status import (
 )
 from rest_framework.views import APIView
 
-from api.exceptions import (
-    LinkDoesNotContainJsonError,
-    FileStatusNotFoundError,
-)
-
 from app_services.infrastructure import RedisService
 
 
@@ -61,30 +56,11 @@ class FileStatusCheckerAPIView(APIView):
         """
         Get the current file processing status by its link.
         """
-        try:
-            link = (
-                request.query_params.get("link")
-            )
+        link = request.query_params.get("link")
 
-            if not link.endswith(".json"):
-                raise LinkDoesNotContainJsonError(link)
+        result = self.service.get(link)
 
-            result = self.service.get(link)
-
-            if not result:
-                raise FileStatusNotFoundError
-        except LinkDoesNotContainJsonError as e:
-            return Response(
-                {"message": e.message},
-                status=HTTP_400_BAD_REQUEST
-            )
-        except FileStatusNotFoundError as e:
-            return Response(
-                {"message": e.message},
-                status=HTTP_404_NOT_FOUND
-            )
-        else:
-            return Response(
-                {"message": f"File={link}, status={result}"},
-                status=HTTP_200_OK
-            )
+        return Response(
+            {"message": f"File={link}, status={result}"},
+            status=HTTP_200_OK
+        )

@@ -21,7 +21,7 @@ services:
       dockerfile: Dockerfile
       network: host
     env_file:
-      - rediskafkaintegration/.env
+      - django_app/.env
     environment:
       - WRITE_TO_KAFKA=True   # use ${WRITE_TO_KAFKA} to get value from .env
     stdin_open: true

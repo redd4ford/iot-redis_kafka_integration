@@ -21,7 +21,7 @@ class FileGenerator:
         FileGenerator.create_datasets_folder()
         filepath = os.path.join(settings.DATASETS_URL, filename)
 
-        with open(filepath, 'w') as f:
-            json.dump(content, f)
+        with open(filepath, 'w') as file:
+            json.dump(content, file)
 
         return filepath

@@ -1,7 +1,7 @@
 from typing import Tuple
 
 from api.constants import FileStatus
-from api.exceptions import LinkDoesNotContainJsonError
+from django_app.exceptions import LinkDoesNotContainJsonError
 from app_services.dataset_processor import (
     FileLoader,
     FileGenerator,
